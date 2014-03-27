@@ -99,10 +99,11 @@ public class NotificationMgr {
     static final int DATA_DISCONNECTED_ROAMING_NOTIFICATION = 7;
     static final int SELECTED_OPERATOR_FAIL_NOTIFICATION = 8;
     static final int BLACKLISTED_CALL_NOTIFICATION = 9;
-
-    // notification light default constants
     public static final int DEFAULT_COLOR = 0xFFFFFF; //White
     public static final int DEFAULT_TIME = 1000; // 1 second
+
+    private static final String SUPPRESS_DATADISCONNECTED_NOTIFICATION = "suppress_datadisconnected_notification";
+    private static final String SUPPRESS_NOSERVICE_NOTIFICATION = "suppress_noservice_notification";
 
     /** The singleton NotificationMgr instance. */
     private static NotificationMgr sInstance;
@@ -1076,23 +1077,28 @@ public class NotificationMgr {
      * you have the "data roaming" feature turned off.
      */
     /* package */ void showDataDisconnectedRoaming() {
-        if (DBG) log("showDataDisconnectedRoaming()...");
+        ContentResolver resolver = mContext.getContentResolver();
+        boolean suppress = Settings.System.getInt(resolver, SUPPRESS_DATADISCONNECTED_NOTIFICATION, 0) == 1;
 
-        // "Mobile network settings" screen / dialog
-        Intent intent = new Intent(mContext, com.android.phone.MobileNetworkSettings.class);
+        if (!suppress) {
+            if (DBG) log("showDataDisconnectedRoaming()...");
 
-        final CharSequence contentText = mContext.getText(R.string.roaming_reenable_message);
+            // "Mobile network settings" screen / dialog
+            Intent intent = new Intent(mContext, com.android.phone.MobileNetworkSettings.class);
 
-        final Notification.Builder builder = new Notification.Builder(mContext);
-        builder.setSmallIcon(android.R.drawable.stat_sys_warning);
-        builder.setContentTitle(mContext.getText(R.string.roaming));
-        builder.setContentText(contentText);
-        builder.setContentIntent(PendingIntent.getActivity(mContext, 0, intent, 0));
+            final CharSequence contentText = mContext.getText(R.string.roaming_reenable_message);
 
-        final Notification notif = new Notification.BigTextStyle(builder).bigText(contentText)
-                .build();
+            final Notification.Builder builder = new Notification.Builder(mContext);
+            builder.setSmallIcon(android.R.drawable.stat_sys_warning);
+            builder.setContentTitle(mContext.getText(R.string.roaming));
+            builder.setContentText(contentText);
+            builder.setContentIntent(PendingIntent.getActivity(mContext, 0, intent, 0));
 
-        mNotificationManager.notify(DATA_DISCONNECTED_ROAMING_NOTIFICATION, notif);
+            final Notification notif = new Notification.BigTextStyle(builder).bigText(contentText)
+                    .build();
+
+            mNotificationManager.notify(DATA_DISCONNECTED_ROAMING_NOTIFICATION, notif);
+        }
     }
 
     /**
@@ -1108,31 +1114,36 @@ public class NotificationMgr {
      * @param operator is the numeric operator number
      */
     private void showNetworkSelection(String operator) {
-        if (DBG) log("showNetworkSelection(" + operator + ")...");
+        ContentResolver resolver = mContext.getContentResolver();
+        boolean suppress = Settings.System.getInt(resolver, SUPPRESS_NOSERVICE_NOTIFICATION, 0) == 1;
 
-        String titleText = mContext.getString(
+        if (!suppress) {
+            if (DBG) log("showNetworkSelection(" + operator + ")...");
+
+            String titleText = mContext.getString(
                 R.string.notification_network_selection_title);
-        String expandedText = mContext.getString(
-                R.string.notification_network_selection_text, operator);
+            String expandedText = mContext.getString(
+                    R.string.notification_network_selection_text, operator);
 
-        Notification notification = new Notification();
-        notification.icon = android.R.drawable.stat_sys_warning;
-        notification.when = 0;
-        notification.flags = Notification.FLAG_ONGOING_EVENT;
-        notification.tickerText = null;
+            Notification notification = new Notification();
+            notification.icon = android.R.drawable.stat_sys_warning;
+            notification.when = 0;
+            notification.flags = Notification.FLAG_ONGOING_EVENT;
+            notification.tickerText = null;
 
-        // create the target network operators settings intent
-        Intent intent = new Intent(Intent.ACTION_MAIN);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
-                Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-        // Use NetworkSetting to handle the selection intent
-        intent.setComponent(new ComponentName("com.android.phone",
-                "com.android.phone.NetworkSetting"));
-        PendingIntent pi = PendingIntent.getActivity(mContext, 0, intent, 0);
+            // create the target network operators settings intent
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                    Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+            // Use NetworkSetting to handle the selection intent
+            intent.setComponent(new ComponentName("com.android.phone",
+                    "com.android.phone.NetworkSetting"));
+            PendingIntent pi = PendingIntent.getActivity(mContext, 0, intent, 0);
 
-        notification.setLatestEventInfo(mContext, titleText, expandedText, pi);
+            notification.setLatestEventInfo(mContext, titleText, expandedText, pi);
 
-        mNotificationManager.notify(SELECTED_OPERATOR_FAIL_NOTIFICATION, notification);
+            mNotificationManager.notify(SELECTED_OPERATOR_FAIL_NOTIFICATION, notification);
+        }
     }
 
     /**
